@@ -1,0 +1,12 @@
+# python cache and venv and some vscode files
+__pycache__/
+.venv/
+.vscode/
+
+# .env, music temp folder and ffmpeg executables
+/ffmpeg/
+/music/
+*.env
+
+# helpful scripts
+*.ps1
