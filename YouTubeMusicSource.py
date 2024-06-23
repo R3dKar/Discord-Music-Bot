@@ -1,61 +1,26 @@
-import yt_dlp
+from discord.player import AudioSource
+import pytube
 import asyncio
-import re
 
 from MusicSource import MusicSource
-
-yt_dlp.utils.bug_reports_message = lambda: ""
-YTDL_OPTIONS = {"format": "bestaudio/best", "outtmpl": "music/%(extractor)s-%(id)s-%(title)s.%(ext)s", "restrictfilenames": True, "noplaylist": True, "nocheckcertificate": True, "ignoreerrors": False, "logtostderr": False, "quiet": True, "no_warnings": True, "default_search": "auto", "source_address": "0.0.0.0"}
+from CacheEntry import CacheEntry
 
 
 class YouTubeMusicSource(MusicSource):
-    ytdl = yt_dlp.YoutubeDL(YTDL_OPTIONS)
+    def __init__(self, filename: str, video: pytube.YouTube, download_task: asyncio.Task, cache_entry: CacheEntry) -> None:
+        super().__init__(filename, f"{video.title} - {video.author}", video.watch_url, video.thumbnail_url, video.length)
 
-    @classmethod
-    async def create(cls, url, loop=None):
-        loop = loop or asyncio.get_event_loop()
-        data = await loop.run_in_executor(None, lambda: YouTubeMusicSource.ytdl.extract_info(url, download=True))
-        if "entries" in data:
-            data = data["entries"][0]
+        self.downloadTask = download_task
+        self.cacheEntry = cache_entry
+        self.cacheEntry.updateLifetime()
+        self.cacheEntry.useCounter += 1
 
-        filename = YouTubeMusicSource.ytdl.prepare_filename(data)
-        title = data.get("title")
-        duration = data.get("duration")
-        cover_url = data.get("thumbnail")
-        return cls(filename=filename, title=title, url=url, duration=duration, cover_url=cover_url)
+    def __del__(self) -> None:
+        self.cacheEntry.updateLifetime()
+        self.cacheEntry.useCounter -= 1
 
-    @classmethod
-    async def createList(cls, url, loop=None):
-        loop = loop or asyncio.get_event_loop()
-        data_list = await loop.run_in_executor(None, lambda: YouTubeMusicSource.ytdl.extract_info(url, download=True))
-        if "entries" in data_list:
-            data_list = data_list["entries"]
-        else:
-            data_list = [data_list]
+    async def getAudioSource(self, volume=0.5) -> AudioSource:
+        if self.downloadTask:
+            await self.downloadTask
 
-        sources = []
-        for data in data_list:
-            filename = YouTubeMusicSource.ytdl.prepare_filename(data)
-            title = data.get("title")
-            duration = data.get("duration")
-            cover_url = data.get("thumbnail")
-            music_url = data.get("original_url")
-
-            sources.append(cls(filename=filename, title=title, url=music_url, duration=duration, cover_url=cover_url))
-
-        return sources
-
-
-async def createMusicSource(url: str) -> list[MusicSource]:
-    try:
-        if re.search(r"(http(s)?:\/\/)?(www\.)?youtu(\.be|be\.com)\/", url):
-            if re.search(r"list=", url):
-                return await YouTubeMusicSource.createList(url)
-
-            return [await YouTubeMusicSource.create(url)]
-        # elif os.path.exists(os.path.join('music', url)):
-        #    return MusicSource(os.path.join('music', url), 'Untitled')
-    except Exception as e:
-        raise ValueError(f"{e.__class__}: {str(e)}")
-
-    raise ValueError("Invalid url pattern!")
+        return await super().getAudioSource(volume)

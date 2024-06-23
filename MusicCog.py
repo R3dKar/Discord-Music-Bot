@@ -5,12 +5,16 @@ from discord.ext import commands
 
 from LoopedQueue import LoopedQueue, LoopType
 from MusicSource import MusicSource
-from YouTubeMusicSource import createMusicSource
+from MusicSourceProvider import MusicSourceProvider
+
+from config import MUSIC_CACHE_FOLDER, MUSIC_MAX_DOWNLOADERS
 
 
 class MusicCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot: commands.Bot = bot
+        self.musicSourceProvider: MusicSourceProvider = MusicSourceProvider(cache_folder=MUSIC_CACHE_FOLDER, max_downloaders=MUSIC_MAX_DOWNLOADERS)
+        self.bot.loop.create_task(self.musicSourceProvider.start())
         self.queues: dict[discord.Guild, LoopedQueue[MusicSource]] = {}
         self.voiceClients: dict[discord.Guild, discord.VoiceClient] = {}
         self.infoMessages: dict[discord.Guild, discord.Message] = {}
@@ -38,7 +42,7 @@ class MusicCog(commands.Cog):
         embed.set_author(name="Сейчас играет:")
         embed.title = f"{playing_music.title} [{playing_music.getDurationString()}]"
         embed.url = playing_music.url
-        embed.set_thumbnail(url=playing_music.cover_url)
+        embed.set_thumbnail(url=playing_music.coverUrl)
 
         embed.add_field(name=" ", value="Очередь:", inline=False)
         for i, music in enumerate(current_queue.queue[:23]):
@@ -71,9 +75,8 @@ class MusicCog(commands.Cog):
         if not self.queues[interaction.guild].empty:
             new_music_list: list[MusicSource] = None
             try:
-                new_music_list = await createMusicSource(url)
-            except ValueError as e:
-                print(str(e))
+                new_music_list = await self.musicSourceProvider.getMusicSources(url)
+            except ValueError:
                 return await interaction.edit_original_response(embed=self.getSimpleEmbed("Не могу воспроизвести этот трек :/"))
             self.queues[interaction.guild].add(new_music_list)
             await self.infoMessages[interaction.guild].edit(embed=self.getQueueEmbed(interaction))
@@ -88,15 +91,14 @@ class MusicCog(commands.Cog):
 
         try:
             self.voiceClients[interaction.guild] = await interaction.user.voice.channel.connect(self_deaf=True)
-        except Exception as e:
+        except Exception:
             return await interaction.edit_original_response(embed=self.getSimpleEmbed("Не могу подключиться к вашему голосовому каналу :("))
 
         new_music_list: list[MusicSource] = None
         try:
-            new_music_list = await createMusicSource(url)
-        except ValueError as e:
+            new_music_list = await self.musicSourceProvider.getMusicSources(url)
+        except ValueError:
             await self.voiceClients[interaction.guild].disconnect()
-            print(str(e))
             return await interaction.edit_original_response(embed=self.getSimpleEmbed("Не могу воспроизвести этот трек :/"))
         self.queues[interaction.guild].add(new_music_list)
 
@@ -112,9 +114,9 @@ class MusicCog(commands.Cog):
             current_music: MusicSource = self.queues[interaction.guild].get()
             await info_message.edit(embed=self.getQueueEmbed(interaction))
 
-            current_music_source = current_music.getSource()
-            await self._play(self.voiceClients[interaction.guild], current_music_source)
-            current_music_source.cleanup()
+            current_music_audiosource = await current_music.getAudioSource()
+            await self._play(self.voiceClients[interaction.guild], current_music_audiosource)
+            current_music_audiosource.cleanup()
 
             self.queues[interaction.guild].next()
 
@@ -131,7 +133,7 @@ class MusicCog(commands.Cog):
 
     async def _play(self, vc: discord.VoiceClient, source: discord.AudioSource) -> None:
         _next: asyncio.Event = asyncio.Event()
-        vc.play(source, after=lambda e: self.bot.loop.call_soon_threadsafe(_next.set))
+        vc.play(source, after=lambda _: self.bot.loop.call_soon_threadsafe(_next.set))
 
         while not _next.is_set() and vc.is_connected():
             await asyncio.sleep(0.01)
@@ -144,14 +146,13 @@ class MusicCog(commands.Cog):
 
         self.queues[interaction.guild].loop = loop
 
-        content: str = ""
-        if loop == LoopType.All:
-            content = "Зацикливание всей очереди включено"
-        elif loop == LoopType.Single:
-            content = "Зацикливание одного трека включено"
-        elif loop == LoopType.Off:
-            content = "Зацикливание выключено"
-        await interaction.response.send_message(embed=self.getSimpleEmbed(content))
+        contentMap: dict[LoopType, str] = {
+            LoopType.All: "Зацикливание всей очереди включено",
+            LoopType.Single: "Зацикливание одного трека включено",
+            LoopType.Off: "Зацикливание выключено",
+        }
+
+        await interaction.response.send_message(embed=self.getSimpleEmbed(contentMap[loop]))
 
     @app_commands.command(description="Очистить очередь и остановить проигрывание")
     @app_commands.guild_only()
