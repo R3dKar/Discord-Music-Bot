@@ -1,87 +1,49 @@
-import asyncio
-import datetime
-import os
-import pytube
-import re
 import logging
 
 from MusicSource import MusicSource
-from YouTubeMusicSource import YouTubeMusicSource
-from CacheEntry import CacheEntry
+from YouTubeUrlMusicSourceProviderModule import YouTubeUrlMusicSourceProviderModule
+from YouTubeSearchMusicSourceProviderModule import YouTubeSearchMusicSourceProviderModule
+from FileCacheDict import FileCacheDict
+from Downloader import Downloader
 
 
+# класс, предоставляющий доступ к объектам MusicSource по строке запроса
 class MusicSourceProvider:
+    # логгер
     logger = logging.getLogger("music_source_provider")
 
     def __init__(self, cache_folder: str, max_downloaders: int) -> None:
-        self.cacheFolder: str = cache_folder
-        self.downloadSemaphore: asyncio.Semaphore = asyncio.Semaphore(max_downloaders)
-        self.started = False
+        # кеш
+        self.cache: FileCacheDict = FileCacheDict(cache_folder)
+        # загрузчик
+        self.downloader: Downloader = Downloader(max_downloaders)
 
-        self.cached: dict[str, CacheEntry] = {}
+        # модули для получения MusicSource разными методами
+        self.modules = [YouTubeUrlMusicSourceProviderModule(self.cache, self.downloader)]
+        self.modules += [YouTubeSearchMusicSourceProviderModule(self.modules[0])]
 
-        existing_files = [filename for filename in os.listdir(self.cacheFolder) if os.path.isfile(os.path.join(self.cacheFolder, filename))]
-        for filename in existing_files:
-            self.cached[filename] = CacheEntry(filename)
-            self.logger.info(f'Found file "{filename}". Added to cache.')
-
-    async def fileLifetimeCheck(self, filename: str) -> None:
-        while (datetime.datetime.now() < self.cached[filename].expires) or (self.cached[filename].useCounter > 0):
-            await asyncio.sleep(max((self.cached[filename].expires - datetime.datetime.now()).total_seconds(), 1))
-
-        del self.cached[filename]
-        os.remove(os.path.join(self.cacheFolder, filename))
-        self.logger.info(f'Removed file "{filename}" from cache.')
-
-    async def start(self) -> None:
-        if self.started:
-            return
-
-        self.started = True
-
-        for filename in self.cached.keys():
-            asyncio.create_task(self.fileLifetimeCheck(filename))
-
-    async def getMusicSources(self, url: str) -> list[MusicSource]:
+    # получить экземпляры MusicSource по текстовому запросу
+    async def getMusicSources(self, query: str) -> list[MusicSource]:
         try:
-            if re.search(r"(http(s)?:\/\/)?(www\.)?youtu(\.be|be\.com)\/", url):
-                urls: list[str] = []
-                if re.search(r"list=", url):
-                    urls.extend(pytube.Playlist(url).video_urls)
-                else:
-                    urls = [url]
+            # пройтись по модулям
+            for module in self.modules:
+                # если модуль не может обработать запрос - пропустить
+                if not module.canProcessQuery(query):
+                    continue
 
-                music_sources: list[MusicSource] = []
+                self.logger.info(f'Trying module "{module.__class__.__name__}" for "{query}".')
 
-                for url in urls:
-                    video = pytube.YouTube(url)
+                # получить MusicSource при помощи модуля
+                music_sources = [music_source async for music_source in module.processQuery(query)]
 
-                    filename = f"youtube.{video.video_id}"
-                    download_task = None
+                # если удалось получить непустой список music_soureces, то вернуть результат
+                if len(music_sources) > 0:
+                    self.logger.info(f"Fethched {len(music_sources)} entries.")
+                    return music_sources
 
-                    if filename not in self.cached:
-                        self.cached[filename] = CacheEntry(filename)
-                        asyncio.create_task(self.fileLifetimeCheck(filename))
-
-                        download_task = asyncio.create_task(self.downloadYouTubeVideo(video, filename))
-                    else:
-                        self.logger.info(f'Found file "{filename}" in cache. Reusing...')
-
-                    music_sources.append(YouTubeMusicSource(os.path.join(self.cacheFolder, filename), video, download_task, self.cached[filename]))
-
-                return music_sources
         except Exception as e:
-            raise ValueError(f"{e.__class__}: {str(e)}")
+            raise ValueError(f"{e.__name__}: {str(e)}")
 
-        raise ValueError("Ссылка не может быть обработана!")
-
-    async def downloadYouTubeVideo(self, video: pytube.YouTube, filename: str) -> None:
-        self.logger.info(f'Downloading of "{video.watch_url}" to "{filename}" is queued.')
-        await self.downloadSemaphore.acquire()
-
-        try:
-            self.logger.info(f'Downloading of "{video.watch_url}" to "{filename}" started.')
-            await asyncio.to_thread(lambda: video.streams.filter(only_audio=True).first().download(self.cacheFolder, filename))
-        finally:
-            self.logger.info(f'Downloading of "{video.watch_url}" to "{filename}" finished.')
-            self.downloadSemaphore.release()
+        # если ни один модуль не смог отработать - вызвать ошибку
+        self.logger.error(f'Query "{query}" cannot be proceed.')
+        raise ValueError("Невозможно обработать запрос")
