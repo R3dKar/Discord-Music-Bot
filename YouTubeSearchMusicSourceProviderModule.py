@@ -11,7 +11,7 @@ class YouTubeSearchMusicSourceProviderModule(MusicSourceProviderModule):
     def __init__(self, url_module: YouTubeUrlMusicSourceProviderModule):
         super().__init__(url_module.cache, url_module.downloader)
 
-        # модуль, при помощи которого
+        # модуль, при помощи которого будет скачиваться видео по ссылке
         self.urlModule = url_module
 
     def canProcessQuery(self, query: str) -> bool:

@@ -12,6 +12,9 @@ from YouTubeMusicSource import YouTubeMusicSource
 from FileCacheDict import FileCacheDict
 from Downloader import Downloader
 
+# фикс AgeRestrictedError (https://stackoverflow.com/questions/75791765/how-to-download-videos-that-require-age-verification-with-pytube)
+pytube.innertube._default_clients["ANDROID_MUSIC"] = pytube.innertube._default_clients["ANDROID_CREATOR"]
+
 
 # модуль получения музыки при помощи ссылки youtube
 class YouTubeUrlMusicSourceProviderModule(MusicSourceProviderModule):
@@ -42,5 +45,6 @@ class YouTubeUrlMusicSourceProviderModule(MusicSourceProviderModule):
 
             yield YouTubeMusicSource(os.path.join(self.cache.cacheFolder, filename), video, download_task, self.cache.getFile(filename))
 
+    # запустить синхронное скачивание аудио из видео
     def downloadVideo(self, video: pytube.YouTube, filename: str) -> None:
         video.streams.filter(only_audio=True).first().download(self.cache.cacheFolder, filename)
