@@ -16,7 +16,7 @@ class MusicCog(commands.Cog):
     def __init__(self, bot: commands.Bot) -> None:
         self.bot: commands.Bot = bot
 
-        # инициализация кэширования
+        # инициализация кеширования
         self.musicSourceProvider: MusicSourceProvider = MusicSourceProvider(cache_folder=MUSIC_CACHE_FOLDER, max_downloaders=MUSIC_MAX_DOWNLOADERS)
         self.bot.loop.create_task(self.musicSourceProvider.cache.start())
 
@@ -93,7 +93,7 @@ class MusicCog(commands.Cog):
         except Exception:
             return await interaction.edit_original_response(embed=self.getSimpleEmbed("Не могу подключиться к вашему голосовому каналу :("))
 
-        # очистить очередь с музыкой (нужно из-за иногда возникающего бага скачивания с YouTube)
+        # очистить очередь с музыкой (нужно из-за иногда возникающего бага скачивания с YouTube (актуально?))
         guildState.queue.clear()
         # если попытка добавить музыку неудачна - отключиться от голосового
         if not await self.addMusicToQueue(interaction, guildState, query):
@@ -109,7 +109,7 @@ class MusicCog(commands.Cog):
             # проиграть музыку в голосовой
             current_music_audiosource = await current_music.getAudioSource()
             await self.playAudioSource(guildState.voiceClient, current_music_audiosource)
-            current_music_audiosource.cleanup()
+            current_music_audiosource.cleanup() # TODO: выловить и пофиксить баг с неправильным закрытием файла музыки
 
             # сдвинуть очередь на следующий трек
             guildState.queue.next()
@@ -124,12 +124,12 @@ class MusicCog(commands.Cog):
         # произвести очистку состояния сервера
         await guildState.clear()
 
-    # метод добавления музыки в  очередь. Возвращает True при успехе
+    # метод добавления музыки в очередь. Возвращает True при успехе
     async def addMusicToQueue(self, interaction: discord.Interaction, guildState: GuildMusicState, query: str) -> bool:
         new_music_list: list[MusicSource] = None
 
         try:
-            # получение списка MusciSource через систему кэширования
+            # получение списка MusciSource через систему кеширования
             new_music_list = await self.musicSourceProvider.getMusicSources(query)
         except ValueError:
             # при неудаче вернуть False

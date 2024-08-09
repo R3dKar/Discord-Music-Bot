@@ -4,7 +4,7 @@ import logging
 from config import MUSIC_CACHE_LIFETIME
 
 
-# класс записи в кэше
+# класс записи в кеше
 class CacheEntry:
     # логгер
     logger = logging.getLogger("cache_entry")
@@ -18,7 +18,7 @@ class CacheEntry:
         # число серверов, на которых используется текущий файл
         self.useCounter: int = 0
 
-    # обновить время жизни файла в кэше
+    # обновить время жизни файла в кеше
     def updateLifetime(self) -> None:
         old = self.expires
         self.expires = datetime.datetime.now() + datetime.timedelta(seconds=MUSIC_CACHE_LIFETIME)

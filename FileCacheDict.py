@@ -20,7 +20,7 @@ class FileCacheDict:
         # словарь кеша
         self.cache: dict[str, CacheEntry] = {}
 
-    # запускаеи систему кеширования и добавляет все файлы, найденные в папке в кеш
+    # запускает систему кеширования и добавляет все файлы, найденные в папке, в кеш
     async def start(self) -> None:
         if self.started:
             return
@@ -43,7 +43,7 @@ class FileCacheDict:
         if filename not in self.cache:
             return
 
-        # удалить фалй
+        # удалить файл
         self.removeFile(filename)
 
     # добавить файл в кеш и запустить корутину отслеживания времени жизни файла

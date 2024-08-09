@@ -15,7 +15,7 @@ class YouTubeMusicSource(MusicSource):
         # задача скачивания файла
         self.downloadTask = download_task
 
-        # запись в кэше
+        # запись в кеше
         self.cacheEntry = cache_entry
         # обновить время жизни кеша
         self.cacheEntry.updateLifetime()

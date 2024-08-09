@@ -14,7 +14,7 @@ class MusicSource:
         return float(result.stdout)
 
     def __init__(self, filename, title, url=None, cover_url=None, duration=None):
-        # имя файла в кэше
+        # имя файла в кеше
         self.filename = filename
         # название трека
         self.title = title

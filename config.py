@@ -1,10 +1,10 @@
 import dotenv
 import os
 
-# загрузить значечния из ".env"
+# загрузить значения из ".env"
 dotenv.load_dotenv()
 
-# токет бота
+# токен бота
 BOT_TOKEN = os.getenv("BOT_TOKEN")
 if not BOT_TOKEN:
     raise ValueError("BOT_TOKEN is not specified in .env")
@@ -33,12 +33,12 @@ if not MUSIC_MAX_DOWNLOADERS:
 else:
     MUSIC_MAX_DOWNLOADERS = int(MUSIC_MAX_DOWNLOADERS)
 
-# путь до испольняемого файла FFMPEG
+# путь до исполняемого файла FFMPEG
 FFMPEG = os.getenv("FFMPEG")
 if not FFMPEG:
     raise ValueError("FFMPEG is not specified in .env")
 
-# путь до испольняемого файла FFPROBE
+# путь до исполняемого файла FFPROBE
 FFPROBE = os.getenv("FFPROBE")
 if not FFPROBE:
     raise ValueError("FFPROBE is not specified in .env")
