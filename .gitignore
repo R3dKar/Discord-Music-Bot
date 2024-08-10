@@ -10,4 +10,5 @@ __pycache__/
 *.env
 
 # helpful scripts
-*.ps1
+/*.ps1
+/run
