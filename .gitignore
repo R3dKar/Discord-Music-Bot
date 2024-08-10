@@ -3,9 +3,10 @@ __pycache__/
 .venv/
 .vscode/
 
-# .env, music temp folder and ffmpeg executables
+# .env, music temp folder, logs folder and ffmpeg executables
 /ffmpeg/
 /music/
+/log/
 *.env
 
 # helpful scripts

@@ -42,3 +42,6 @@ if not FFMPEG:
 FFPROBE = os.getenv("FFPROBE")
 if not FFPROBE:
     raise ValueError("FFPROBE is not specified in .env")
+
+# папка с логами
+LOG_FOLDER = os.getenv("LOG_FOLDER")
