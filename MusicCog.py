@@ -109,7 +109,6 @@ class MusicCog(commands.Cog):
             # проиграть музыку в голосовой
             current_music_audiosource = await current_music.getAudioSource()
             await self.playAudioSource(guildState.voiceClient, current_music_audiosource)
-            current_music_audiosource.cleanup() # TODO: выловить и пофиксить баг с неправильным закрытием файла музыки
 
             # сдвинуть очередь на следующий трек
             guildState.queue.next()
