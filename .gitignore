@@ -12,3 +12,7 @@ __pycache__/
 # helpful scripts
 /*.ps1
 /run
+
+# for docker deploy
+/logs/
+/music-cache/

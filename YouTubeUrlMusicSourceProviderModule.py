@@ -1,6 +1,6 @@
 import re
 import typing
-import pytube
+import pytubefix as pytube
 import functools
 import asyncio
 import os

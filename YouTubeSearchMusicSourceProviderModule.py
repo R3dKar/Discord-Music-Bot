@@ -1,5 +1,5 @@
 import typing
-import pytube
+import pytubefix as pytube
 
 from MusicSource import MusicSource
 from MusicSourceProviderModule import MusicSourceProviderModule

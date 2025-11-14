@@ -1,0 +1,18 @@
+version: '3'
+
+services:
+  music-bot:
+    build: .
+    image: r3dkar/discord-music-bot
+    environment:
+      BOT_TOKEN: ${BOT_TOKEN}
+      HOME_GUILD_ID: ${HOME_GUILD_ID}
+      LOG_FOLDER: logs
+      MUSIC_CACHE_FOLDER: music-cache
+      MUSIC_CACHE_LIFETIME: 259200
+      MUSIC_MAX_DOWNLOADERS: 2
+      FFMPEG: ffmpeg
+      FFPROBE: ffprobe
+    volumes:
+      - ./music-cache:/app/music-cache
+      - ./logs:/app/logs

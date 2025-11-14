@@ -1,5 +1,5 @@
 from discord.player import AudioSource
-import pytube
+import pytubefix as pytube
 import asyncio
 
 from MusicSource import MusicSource
